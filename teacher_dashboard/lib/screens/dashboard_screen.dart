@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../models/session.dart';
 import '../models/teacher.dart';
 import 'report_screen.dart';
+import 'live_student_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String token;
@@ -403,6 +404,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.black,
         elevation: 0.5,
         actions: [
+          // MODIFIED: Live Student Button - Always Visible with Dynamic Status
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: _buildLiveStudentButton(),
+          ),
+
           // Alarm bell
           if (_alarmTriggeredCount > 0)
             Stack(
@@ -524,6 +531,229 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
     );
+  }
+
+  // NEW: Build Live Student Button with Dynamic Status
+  Widget _buildLiveStudentButton() {
+    final bool hasActiveStudents = _activeSessions > 0;
+    final int activeCount = _activeSessions;
+    
+    return GestureDetector(
+      onTap: () {
+        if (hasActiveStudents) {
+          _navigateToLiveStudentScreen();
+        } else {
+          // Show a snackbar when no students are live
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  const Text('No students are currently live'),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: hasActiveStudents ? Colors.green : Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: hasActiveStudents ? Colors.green.shade700 : Colors.grey.shade400,
+            width: 1,
+          ),
+          boxShadow: hasActiveStudents
+              ? [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.3),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              hasActiveStudents ? Icons.live_tv : Icons.person_off,
+              color: hasActiveStudents ? Colors.white : Colors.grey.shade600,
+              size: 14,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              hasActiveStudents ? 'LIVE ($activeCount)' : 'No Live',
+              style: TextStyle(
+                color: hasActiveStudents ? Colors.white : Colors.grey.shade600,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (hasActiveStudents) ...[
+              const SizedBox(width: 4),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Modified: Navigate to Live Student Screen
+  void _navigateToLiveStudentScreen() {
+    final activeSessions = _teacherSessions.where((s) => s.isActive).toList();
+    
+    if (activeSessions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No active sessions to monitor'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // If there's only one active session, navigate directly
+    if (activeSessions.length == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LiveStudentScreen(
+            session: activeSessions.first,
+            token: widget.token,
+          ),
+        ),
+      );
+    } else {
+      // If multiple active sessions, show a bottom sheet to choose
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: const Color(0xFF1E2030),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (context) => Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.live_tv, color: Colors.green, size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Select Student to Monitor',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...activeSessions.map((session) => ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: session.hasAlarm ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    session.hasAlarm ? Icons.warning : Icons.person,
+                    color: session.hasAlarm ? Colors.red : Colors.green,
+                  ),
+                ),
+                title: Text(
+                  session.studentName,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Row(
+                  children: [
+                    Text(
+                      'Risk: ${session.avgRiskScore.toInt()}%',
+                      style: TextStyle(
+                        color: session.avgRiskScore > 70 ? Colors.red : Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '• ${session.courseCode}',
+                      style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                  ],
+                ),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: session.hasAlarm ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: session.hasAlarm ? Colors.red : Colors.green,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    session.hasAlarm ? 'ALARM' : 'LIVE',
+                    style: TextStyle(
+                      color: session.hasAlarm ? Colors.red : Colors.green,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LiveStudentScreen(
+                        session: session,
+                        token: widget.token,
+                      ),
+                    ),
+                  );
+                },
+              )),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildAlertsBanner() {
@@ -936,14 +1166,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildLiveSessionCard(ExamSession session) {
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ReportScreen(
-              session: session,
-              token: widget.token,
-            ),
-          ),
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          builder: (_) => _buildSessionActionSheet(session),
         );
       },
       child: Container(
@@ -1024,7 +1250,171 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildSessionActionSheet(ExamSession session) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E2030),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Student name & info
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  session.studentName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withOpacity(0.4)),
+                ),
+                child: const Text('LIVE',
+                    style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'ID: ${session.studentId}  •  Code: ${session.quizCode.isNotEmpty ? session.quizCode : session.courseCode}',
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          const SizedBox(height: 20),
+          // Monitor Live Student option
+          _buildActionTile(
+            icon: Icons.monitor_heart_outlined,
+            iconColor: const Color(0xFF4F8EF7),
+            title: 'Monitor Live Student',
+            subtitle: 'View real-time proctoring metrics & face tracking',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LiveStudentScreen(
+                    session: session,
+                    token: widget.token,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          // View Session Report option
+          _buildActionTile(
+            icon: Icons.assessment_outlined,
+            iconColor: const Color(0xFF22C55E),
+            title: 'View Session Report',
+            subtitle: 'See full report, alarm history and behaviour summary',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ReportScreen(
+                    session: session,
+                    token: widget.token,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      )),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: Colors.white54, fontSize: 11)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white30, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLiveRiskIndicator(double risk) {
+
     Color color = _getRiskColor(risk);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

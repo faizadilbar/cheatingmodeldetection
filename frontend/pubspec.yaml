@@ -1,0 +1,38 @@
+name: proctor_client
+description: A real-time AI proctoring client app using HTTP REST API to communicate with Flask backend.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Camera plugin for accessing device camera
+  camera: ^0.10.5
+  
+  # HTTP client for API calls
+  http: ^1.2.0
+  
+  # Google Fonts for beautiful typography
+  google_fonts: ^6.1.0
+  
+  # Local storage for user preferences
+  shared_preferences: ^2.2.2
+  
+  # Cross-platform image processing (for JPEG compression)
+  image: ^4.1.3
+  
+  # Permission handling for camera
+  permission_handler: ^11.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

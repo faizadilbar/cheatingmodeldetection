@@ -1,4 +1,4 @@
-﻿# FLUTTER/DART
+# FLUTTER/DART
 .dart_tool/
 .pub/
 .pub-cache/
@@ -41,7 +41,17 @@ Thumbs.db
 *.log
 *.tmp
 *.swp
+*.lnk
 
 # IDE
 .vscode/
 .idea/
+
+# PROJECT SPECIFIC
+reports/
+*.db
+*.signal
+live_metrics.json
+exam_session.json
+uploads/
+structure.txt

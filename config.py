@@ -155,3 +155,10 @@ REPORT_RETRY_COUNT = 3              # Number of retries for failed uploads
 REPORTS_DIR = "reports"             # Directory for saving reports
 MODELS_DIR = "models"               # Directory for ML models
 LOGS_DIR = "logs"                   # Directory for log files
+
+# =========================================================
+# SESSION RECOVERY AND HEARTBEAT SETTINGS
+# =========================================================
+SESSION_CLEANUP_TIMEOUT = 30        # Timeout in seconds to hold disconnected sessions
+HEARTBEAT_TIMEOUT = 10              # Timeout in seconds to wait for pings before marking connection silent
+HEARTBEAT_INTERVAL = 3              # Timeout in seconds between client heartbeat pings

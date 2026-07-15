@@ -5,7 +5,7 @@ Werkzeug==3.1.8
 gunicorn==23.0.0
 
 # Computer Vision (headless for server - no GUI)
-numpy==2.4.6
+numpy==1.26.4
 opencv-python-headless==4.10.0.84
 mediapipe==0.10.18
 Pillow==12.2.0

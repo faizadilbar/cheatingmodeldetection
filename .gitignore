@@ -10,11 +10,6 @@ build/
 # ==========================================
 data/
 dataset/
-*.zip
-*.tar
-*.gz
-*.rar
-*.7z
 *.png
 *.jpg
 *.jpeg

@@ -11,5 +11,9 @@ mediapipe==0.10.18
 Pillow==12.2.0
 scipy==1.17.1
 
+# PyTorch CPU (for trained ResNet18 model inference on Railway)
+torch==2.2.2+cpu
+torchvision==0.17.2+cpu
+
 # HTTP client
 requests==2.34.2

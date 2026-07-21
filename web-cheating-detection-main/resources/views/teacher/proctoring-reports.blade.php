@@ -343,5 +343,19 @@
             }
         });
     }
+
+    // ── 5-SECOND LIVE API POLLING FOR TEACHER DASHBOARD ──
+    setInterval(async function() {
+        try {
+            const res = await fetch('https://bgnuf22eight.com/cheating/proctoring-backend/public/api/exam-sessions', {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (res.ok) {
+                console.log('[Live Proctoring] Polled exam-sessions API every 5s for updated scores');
+            }
+        } catch (e) {
+            // silent
+        }
+    }, 5000); // 5 Seconds Interval
 </script>
 @endsection

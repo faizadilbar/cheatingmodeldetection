@@ -255,11 +255,11 @@
 
 @push('scripts')
 <script>
-const QUIZ_CODE  = '{{ $code }}';
+const POLL_CODE  = '{{ $code }}';
 const POLL_URL   = '{{ route("teacher.quiz.attempts-json", $code) }}';
 const UNLOCK_URL = '{{ route("teacher.quiz.unlock") }}';
 const CSRF       = document.querySelector('meta[name="csrf-token"]').content;
-const POLL_SECS  = 8;
+const POLL_SECS  = 5; // 5-Second Live API Polling
 const CIRC       = 50.3; // circumference of r=8 circle
 
 let autoOn       = true;

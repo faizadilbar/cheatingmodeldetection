@@ -270,6 +270,10 @@ class ProctorController extends Controller
     /**
      * Consolidate duplicate sessions for the same student + quiz_code
      */
+    /**
+     * Consolidate duplicate sessions for the same student + quiz_code.
+     * Picks the row with the MAXIMUM risk score & highest predictions as the primary record.
+     */
     public function consolidateSessions(array $rawSessions): array
     {
         $grouped = [];
@@ -292,16 +296,28 @@ class ProctorController extends Controller
         $levelPriority = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1, 'none' => 0, '' => 0];
 
         foreach ($grouped as $items) {
-            // Sort by ID ascending so earliest is first
-            usort($items, function ($a, $b) {
-                return ($a['id'] ?? 0) <=> ($b['id'] ?? 0);
+            // Sort items to pick the row with the HIGHEST risk score and HIGHEST predictions
+            usort($items, function ($a, $b) use ($levelPriority) {
+                $riskA = (float)($a['risk_score'] ?? $a['max_risk_score'] ?? $a['avg_risk_score'] ?? 0);
+                $riskB = (float)($b['risk_score'] ?? $b['max_risk_score'] ?? $b['avg_risk_score'] ?? 0);
+                
+                $violA = (int)($a['total_violations'] ?? $a['total_alarms'] ?? (($a['gaze_away_count']??0) + ($a['head_turn_count']??0) + ($a['no_face_count']??0) + ($a['multiple_face_count']??0)));
+                $violB = (int)($b['total_violations'] ?? $b['total_alarms'] ?? (($b['gaze_away_count']??0) + ($b['head_turn_count']??0) + ($b['no_face_count']??0) + ($b['multiple_face_count']??0)));
+
+                if ($riskA !== $riskB) {
+                    return $riskB <=> $riskA; // Higher risk first
+                }
+                if ($violA !== $violB) {
+                    return $violB <=> $violA; // Higher violations first
+                }
+                return ($b['id'] ?? 0) <=> ($a['id'] ?? 0);
             });
 
-            $first = $items[0];
-            $last  = end($items);
+            // $items[0] is the row with the MAXIMUM risk score & highest predictions!
+            $bestRow = $items[0];
 
-            $maxRisk  = 0;
-            $maxLevel = 'none';
+            $maxRisk  = (float)($bestRow['risk_score'] ?? $bestRow['max_risk_score'] ?? $bestRow['avg_risk_score'] ?? 0);
+            $maxLevel = strtolower($bestRow['alarm_level'] ?? 'none');
             $gaze     = 0;
             $head     = 0;
             $noFace   = 0;
@@ -310,7 +326,7 @@ class ProctorController extends Controller
             $totV     = 0;
 
             foreach ($items as $item) {
-                $r = (float)($item['risk_score'] ?? $item['max_risk_score'] ?? 0);
+                $r = (float)($item['risk_score'] ?? $item['max_risk_score'] ?? $item['avg_risk_score'] ?? 0);
                 if ($r > $maxRisk) {
                     $maxRisk = $r;
                 }
@@ -330,29 +346,19 @@ class ProctorController extends Controller
                 $totV += $itemViolations;
             }
 
-            // Consolidated record
-            $merged = $last;
-            $merged['id']                  = $last['id'] ?? $first['id'];
-            $merged['student_id']          = $first['student_id'] ?? $last['student_id'];
-            $merged['student_name']        = $first['student_name'] ?? $last['student_name'];
-            $merged['course_name']         = $first['course_name'] ?? $last['course_name'];
-            $merged['quiz_code']           = $first['quiz_code'] ?? $last['quiz_code'];
-            $merged['quiz_id']             = $first['quiz_id'] ?? $last['quiz_id'];
-            $merged['exam_date']           = $first['exam_date'] ?? $last['exam_date'];
-            $merged['start_time']          = $first['start_time'] ?? $last['start_time'];
-            $merged['end_time']            = $last['end_time'] ?? $first['end_time'];
-            $merged['risk_score']          = round($maxRisk);
-            $merged['alarm_level']         = strtoupper($maxLevel);
-            $merged['total_alarms']        = $totV;
-            $merged['total_violations']    = $totV;
-            $merged['gaze_away_count']     = $gaze;
-            $merged['head_turn_count']     = $head;
-            $merged['no_face_count']       = $noFace;
-            $merged['multiple_face_count'] = $multi;
-            $merged['blink_count']         = $blinks;
-            $merged['attempt_count']       = count($items);
+            // Populate the best row with maximum metrics across all attempts
+            $bestRow['risk_score']          = round(max($maxRisk, (float)($bestRow['risk_score'] ?? $bestRow['max_risk_score'] ?? 0)));
+            $bestRow['alarm_level']         = strtoupper($maxLevel !== 'none' ? $maxLevel : ($bestRow['alarm_level'] ?? 'NONE'));
+            $bestRow['total_alarms']        = max($totV, (int)($bestRow['total_alarms'] ?? 0));
+            $bestRow['total_violations']    = max($totV, (int)($bestRow['total_violations'] ?? 0));
+            $bestRow['gaze_away_count']     = max($gaze, (int)($bestRow['gaze_away_count'] ?? 0));
+            $bestRow['head_turn_count']     = max($head, (int)($bestRow['head_turn_count'] ?? 0));
+            $bestRow['no_face_count']       = max($noFace, (int)($bestRow['no_face_count'] ?? 0));
+            $bestRow['multiple_face_count'] = max($multi, (int)($bestRow['multiple_face_count'] ?? 0));
+            $bestRow['blink_count']         = max($blinks, (int)($bestRow['blink_count'] ?? 0));
+            $bestRow['attempt_count']       = count($items);
 
-            $result[] = $merged;
+            $result[] = $bestRow;
         }
 
         return $result;
